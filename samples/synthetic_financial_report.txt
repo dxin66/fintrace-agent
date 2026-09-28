@@ -1,0 +1,8 @@
+Synthetic Example Corporation — Selected Financial Information
+
+All figures below are fictional and are expressed in CNY millions.
+
+For the year ended 31 December 2025, revenue was 125.00, compared with 100.00 for 2024.
+Operating profit was 18.00 in 2025 and 14.00 in 2024.
+
+This document exists only to test document ingestion, retrieval, calculation, and citation flows.

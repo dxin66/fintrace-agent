@@ -1,0 +1,19 @@
+.runtime/
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+node_modules/
+target/
+dist/
+coverage/
+.DS_Store
+.idea/
+.vscode/
+
+# Local source documents are not redistributed. Keep only the synthetic sample.
+samples/*.pdf
+samples/*.html
+samples/中国人民银行_数据安全管理办法.txt

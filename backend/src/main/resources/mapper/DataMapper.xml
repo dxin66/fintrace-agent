@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.financial.workflow.DataMapper">
+<select id="user" resultType="map">SELECT * FROM users WHERE username=#{username}</select>
+<insert id="insertUser" useGeneratedKeys="true" keyProperty="id">INSERT INTO users(username,password_hash) VALUES(#{username},#{password_hash})</insert>
+<insert id="insertDocument" useGeneratedKeys="true" keyProperty="id">INSERT INTO documents(owner_id,filename,path,mime_type,status,storage_scope) VALUES(#{owner_id},#{filename},#{path},#{mime_type},'INDEXING',#{storage_scope})</insert>
+<select id="documents" resultType="map">SELECT id,filename,status,chunk_count,error,created_at,storage_scope FROM documents WHERE owner_id=#{owner} AND storage_scope='LIBRARY' ORDER BY id DESC</select>
+<select id="document" resultType="map">SELECT * FROM documents WHERE id=#{id} AND owner_id=#{owner}</select>
+<update id="indexStatus">UPDATE documents SET status=#{status},chunk_count=#{count},error=#{error} WHERE id=#{id} AND status != 'DISCARDED'</update>
+<update id="claimDocument">UPDATE documents SET task_id=#{task} WHERE id=#{id} AND owner_id=#{owner} AND storage_scope='TASK' AND task_id IS NULL AND status='READY'</update>
+<update id="discardDocument">UPDATE documents SET status='DISCARDED' WHERE id=#{id} AND owner_id=#{owner} AND storage_scope='TASK' AND task_id IS NULL</update>
+<insert id="insertSession" useGeneratedKeys="true" keyProperty="id">INSERT INTO sessions(owner_id,title) VALUES(#{owner_id},#{title})</insert>
+<select id="sessions" resultType="map">SELECT * FROM sessions WHERE owner_id=#{owner} ORDER BY id DESC</select>
+<select id="session" resultType="map">SELECT * FROM sessions WHERE id=#{id} AND owner_id=#{owner}</select>
+<insert id="insertTask" useGeneratedKeys="true" keyProperty="id">INSERT INTO tasks(owner_id,session_id,instruction,document_ids,idempotency_key,request_hash,status) VALUES(#{owner_id},#{session_id},#{instruction},#{document_ids},#{idempotency_key},#{request_hash},'QUEUED')</insert>
+<select id="task" resultType="map">SELECT * FROM tasks WHERE id=#{id} AND owner_id=#{owner}</select>
+<select id="idempotent" resultType="map">SELECT * FROM tasks WHERE owner_id=#{owner} AND idempotency_key=#{key}</select>
+<select id="tasks" resultType="map">SELECT * FROM tasks WHERE owner_id=#{owner} ORDER BY id DESC LIMIT 30 OFFSET #{offset}</select>
+<update id="transition">UPDATE tasks SET status=#{status},result=#{result},error=#{error} WHERE id=#{id} AND status IN ('QUEUED','RUNNING')</update>
+<update id="startTask">UPDATE tasks SET status='RUNNING' WHERE id=#{id} AND status='QUEUED'</update>
+<update id="interruptTasks">UPDATE tasks SET status='FAILED',error='服务重启，执行已中断；未自动重新调用模型' WHERE status IN ('QUEUED','RUNNING')</update>
+<update id="interruptRuns">UPDATE agent_runs SET status='FAILED',result='服务重启，执行中断' WHERE status='RUNNING'</update>
+<update id="interruptTools">UPDATE tool_calls SET status='FAILED',result='服务重启，执行中断' WHERE status='RUNNING'</update>
+<update id="interruptDocuments">UPDATE documents SET status='FAILED',error='索引因服务重启中断，请重新上传' WHERE status='INDEXING'</update>
+<insert id="insertRun">INSERT INTO agent_runs(id,task_id,parent_id,name,prompt,status) VALUES(#{id},#{task_id},#{parent_id},#{name},#{prompt},'RUNNING')</insert>
+<update id="finishRun">UPDATE agent_runs SET status=#{status},result=#{result},steps=#{steps} WHERE id=#{id} AND status='RUNNING'</update>
+<update id="tokens">UPDATE agent_runs SET prompt_tokens=prompt_tokens+#{prompt},completion_tokens=completion_tokens+#{completion} WHERE id=#{id}</update>
+<select id="runs" resultType="map">SELECT * FROM agent_runs WHERE task_id=#{task} ORDER BY created_at,id</select>
+<insert id="insertTool">INSERT INTO tool_calls(id,task_id,agent_id,name,arguments,status) VALUES(#{id},#{task_id},#{agent_id},#{name},#{arguments},'RUNNING')</insert>
+<update id="finishTool">UPDATE tool_calls SET status=#{status},result=#{result},duration_ms=#{duration} WHERE id=#{id} AND status='RUNNING'</update>
+<select id="tools" resultType="map">SELECT * FROM tool_calls WHERE task_id=#{task} ORDER BY created_at,id</select>
+<insert id="evidence">INSERT INTO evidence(task_id,chunk_id,document_id,payload) VALUES(#{task},#{chunk},#{document},#{payload}) ON DUPLICATE KEY UPDATE payload=VALUES(payload)</insert>
+<select id="evidenceList" resultType="map">SELECT * FROM evidence WHERE task_id=#{task}</select>
+<insert id="event">INSERT INTO task_events(task_id,type,payload) VALUES(#{task},#{type},#{payload})</insert>
+<select id="events" resultType="map">SELECT * FROM task_events WHERE task_id=#{task} AND id &gt; #{after} ORDER BY id LIMIT 200</select>
+<update id="reviewState">UPDATE tasks SET review_status=#{decision},version=version+1 WHERE id=#{task} AND owner_id=#{owner} AND status='SUCCEEDED' AND version=#{version}</update>
+<insert id="insertReview">INSERT INTO reviews(task_id,owner_id,decision,note) VALUES(#{task},#{owner},#{decision},#{note})</insert>
+<select id="reviews" resultType="map">SELECT * FROM reviews WHERE task_id=#{task} ORDER BY id DESC</select>
+</mapper>
