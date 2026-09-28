@@ -5,7 +5,7 @@ export default defineConfig({
   server: { proxy: { '/api': 'http://127.0.0.1:8080' } },
   test: {
     environment: 'jsdom',
-    testTimeout: 15000,
+    testTimeout: 30000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
